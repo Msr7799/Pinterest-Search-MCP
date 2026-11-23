@@ -13,8 +13,8 @@ not HTTP requests.
 | `/health` (or `/api/health`) | GET | Readiness and authentication mode |
 | `/health?check=pinterest` | GET | Make a live Pinterest connectivity check |
 
-Expected `GET /mcp` behavior depends on the MCP transport and is **not** a
-health test. Use POST from a real MCP client. Request logs record a random
+`GET /mcp` deliberately returns HTTP 405 in stateless mode to avoid holding a
+stream open until Vercel times out. Use POST from a real MCP client. Request logs record a random
 `request_id`, HTTP method, route, status, and duration without request bodies,
 cookies, search queries, or bearer tokens. Match `X-Request-Id` in the response
 to the Vercel runtime logs.

@@ -110,7 +110,7 @@
     <section class="card">
       <div class="card-title"><h3>سجل طلبات صفحة التشخيص</h3><button id="clearLog" type="button" class="btn quiet">مسح السجل</button></div>
       <div class="logs"><table><thead><tr><th>الوقت</th><th>الطريقة</th><th>المسار</th><th>HTTP</th><th>المدة</th><th>Request ID</th></tr></thead><tbody id="requestRows"><tr><td colspan="6" class="empty">شغّل فحص عشان تظهر الطلبات هني</td></tr></tbody></table></div>
-      <p class="hint">هذا السجل يعرض الطلبات اللي تسويها من <strong>هالصفحة خلال جلستك الحالية فقط</strong>، مو كل طلبات الزوّار. سجلات الإنتاج الكاملة موجودة في Vercel Runtime Logs. رمز 202 لإشعار MCP طبيعي، وGET على /mcp قد يرجع 406 إذا الطلب ما يدعم SSE.</p>
+      <p class="hint">هذا السجل يعرض الطلبات اللي تسويها من <strong>هالصفحة خلال جلستك الحالية فقط</strong>، مو كل طلبات الزوّار. سجلات الإنتاج الكاملة موجودة في Vercel Runtime Logs. رمز 202 لإشعار MCP طبيعي، وGET على /mcp يرجّع 405 لأن الخادم يستخدم POST في الوضع الحالي.</p>
     </section>
     <div class="footer"><span>Read-only diagnostics · No credentials stored · لا نحفظ طلباتك في المتصفح بعد إغلاق الصفحة</span><span id="deployment">MCP Endpoint: <a href="/health">/mcp</a></span></div>
   </main>
