@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="لوحة تشخيص خادم Pinterest Search MCP وطلبات HTTP والاتصال بموقع Pinterest">
+  <title>Pinterest MCP · Diagnostics</title>
+  <style>
+    :root { --bg:#0c0e14;--panel:#151921;--panel2:#1a1f29;--border:#303744;--text:#f3f5f8;--muted:#a4acba;--red:#ed2243;--green:#3ad2a0;--yellow:#ffca6b;--blue:#88b9fa;--radius:16px; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(ellipse at 85% 0%,#311724 0%,transparent 45%),radial-gradient(ellipse at 8% 80%,#142339 0%,transparent 45%),var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh; }
+    a { color:var(--blue);text-decoration:none; } a:hover { text-decoration:underline; }
+    button,input { font:inherit; }
+    button { cursor:pointer; transition:background .2s,transform .2s; }
+    button:active { transform:scale(.99); } button:disabled { opacity:.55;cursor:wait; }
+    .wrap { max-width:1180px;margin:auto;padding:30px 22px 72px; }
+    .topline { display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:30px;flex-wrap:wrap; }
+    .identity { display:flex;align-items:center;gap:13px; }
+    .mark { display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:var(--red);color:white;font-size:30px;font-weight:800;font-family:Georgia,serif;box-shadow:0 12px 34px #ed224344; }
+    .eyebrow { margin:0 0 5px;color:var(--muted);font-size:12px;letter-spacing:1.1px;direction:ltr;text-align:right; }
+    h1 { margin:0;font-size:25px;letter-spacing:-.6px; }
+    .top-links { display:flex;align-items:center;gap:18px;font-size:13px;flex-wrap:wrap; }
+    .hero { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:24px;padding:26px 28px;border:1px solid #5e2939;border-radius:21px;background:linear-gradient(120deg,#261a25,#181d27 75%);margin-bottom:22px; }
+    .hero h2 { margin:0 0 9px;font-size:26px; } .hero p { margin:0;line-height:1.8;color:var(--muted);font-size:14px;max-width:600px; }
+    .pill { display:inline-flex;align-items:center;gap:9px;background:#30303a;border:1px solid #55525c;padding:9px 12px;border-radius:40px;font-size:13px;white-space:nowrap; }
+    .dot { width:9px;height:9px;background:var(--yellow);display:inline-block;border-radius:50%;box-shadow:0 0 10px currentColor; }
+    .pill.good { background:#14332b;border-color:#27664f;color:#91f4cf; } .pill.good .dot { background:var(--green); }
+    .pill.bad { background:#3a1f29;border-color:#804257;color:#ffc0cb; } .pill.bad .dot { background:#ff6380; }
+    .grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px; }
+    .metric,.card { border:1px solid var(--border);border-radius:var(--radius);background:linear-gradient(145deg,var(--panel),#11151d); }
+    .metric { min-height:141px;padding:19px; } .metric .label { font-size:13px;color:var(--muted);margin:0 0 22px; }
+    .metric .value { font-size:25px;font-weight:700;direction:ltr;text-align:right;letter-spacing:-.4px;overflow-wrap:anywhere; }
+    .metric .foot { color:var(--muted);font-size:11px;margin:7px 0 0; }
+    .good-text { color:var(--green); } .bad-text { color:#ff7b91; } .warn-text { color:var(--yellow); }
+    .cols { display:grid;grid-template-columns:1.04fr .96fr;gap:18px;align-items:start; }
+    .card { padding:23px;margin-bottom:18px;min-width:0; }
+    .card-title { display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:17px; }
+    .card-title h3 { margin:0;font-size:17px; } .small { color:var(--muted);font-size:12px; }
+    .buttons { display:flex;gap:11px;flex-wrap:wrap;align-items:center; }
+    .btn { border:1px solid var(--border);border-radius:10px;padding:11px 17px;background:#252c39;color:var(--text);font-weight:700;font-size:13px; }
+    .btn:hover { background:#313b49; } .btn.primary { color:white;background:var(--red);border-color:var(--red); }
+    .btn.primary:hover { background:#fa3e5a; } .btn.quiet { padding:8px 12px;font-size:12px; }
+    .steps { padding:0;margin:19px 0 0;list-style:none; }
+    .steps li { display:flex;align-items:center;gap:13px;padding:11px 0;border-top:1px solid #29303c;font-size:13px; }
+    .steps li span:first-child { display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#303845;color:#b7c5d6;font-size:12px;flex-shrink:0; }
+    .steps li strong { font-weight:500;flex:1; } .steps li em { font-style:normal;color:var(--muted);font-size:12px; }
+    .steps li.ok span:first-child { background:#194a3d;color:var(--green); } .steps li.error span:first-child { background:#522b38;color:#ff8da2; }
+    .search-form { display:flex;gap:9px; } .search-form input { background:#0e121a;border:1px solid #394252;color:white;border-radius:10px;padding:11px 13px;flex:1;min-width:0;direction:ltr;outline:none; }
+    .search-form input:focus { border-color:var(--blue); } .search-results { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px; }
+    .thumb { border-radius:10px;background:#252c36;border:1px solid #37404b;overflow:hidden;min-width:0; }
+    .thumb img { width:100%;height:128px;object-fit:cover;display:block; } .thumb p { margin:8px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left; }
+    .result-note { margin:12px 0 0;color:var(--muted);font-size:12px; }
+    .tool-list { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
+    .tool { direction:ltr;text-align:left;border:1px solid #333c4b;padding:11px;border-radius:9px;background:#171d27;font-family:Consolas,monospace;font-size:11px;overflow-wrap:anywhere; }
+    .logs { overflow-x:auto;direction:rtl; } table { width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px; }
+    th { text-align:right;color:#aeb7c6;font-weight:500;padding:11px 8px;border-bottom:1px solid var(--border); }
+    td { padding:12px 8px;border-bottom:1px solid #28303b;color:#dce2eb; }
+    td code { font-family:Consolas,monospace;color:#b6c9e0;font-size:11px; }
+    .status { border-radius:7px;padding:3px 7px;background:#244235;color:#94f5c9;font-weight:700; }
+    .status.fail { background:#502835;color:#ff9fb0; } .status.pending { background:#503c27;color:var(--yellow); }
+    .empty { text-align:center;color:var(--muted);padding:25px; }
+    .hint { margin:0;color:var(--muted);line-height:1.85;font-size:12px; }
+    pre { background:#0a0d13;border:1px solid #29323d;border-radius:10px;color:#b9dbfd;padding:13px;overflow:auto;direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 Consolas,monospace;max-height:250px; }
+    .footer { display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:12px;color:var(--muted);font-size:11px; }
+    @media(max-width:860px) { .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cols{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.tool-list{grid-template-columns:1fr 1fr;} }
+    @media(max-width:520px) { .wrap{padding:22px 12px 50px}.hero{padding:20px}.hero h2{font-size:22px}.grid{gap:9px}.metric{padding:13px;min-height:118px}.metric .value{font-size:20px}.metric .label{margin-bottom:15px}.card{padding:16px}.top-links{gap:10px}.search-form{flex-wrap:wrap}.search-form button{width:100%}.search-results{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topline">
+      <div class="identity"><div class="mark" aria-hidden="true">P</div><div><p class="eyebrow">PINTEREST SEARCH MCP · OPERATIONS</p><h1>مركز تشخيص الخادم</h1></div></div>
+      <nav class="top-links"><a href="/health" target="_blank" rel="noopener">Health API</a><a href="https://github.com/Msr7799/Pinterest-Search-MCP" target="_blank" rel="noopener">GitHub</a><a href="https://vercel.com/msr7799s-projects/src" target="_blank" rel="noopener">Vercel Logs</a></nav>
+    </div>
+    <section class="hero">
+      <div><h2>كل طلب. كل استجابة. بصورة واضحة.</h2><p>افحص صحة الخادم، الاتصال بموقع Pinterest، مصافحة MCP، وقائمة الأدوات. واختبر البحث الحقيقي وشوف مدة كل طلب ورقم تتبّعه.</p></div>
+      <div id="overall" class="pill" role="status" aria-live="polite"><i class="dot"></i><span>بانتظار الفحص</span></div>
+    </section>
+    <div class="grid">
+      <section class="metric"><p class="label">حالة الخادم</p><div id="serverStatus" class="value">—</div><p id="serverDetail" class="foot">GET /health</p></section>
+      <section class="metric"><p class="label">اتصال Pinterest</p><div id="pinterestStatus" class="value">—</div><p id="pinterestDetail" class="foot">فحص مباشر</p></section>
+      <section class="metric"><p class="label">بروتوكول MCP</p><div id="mcpStatus" class="value">—</div><p id="mcpDetail" class="foot">initialize / tools/list</p></section>
+      <section class="metric"><p class="label">عدد الأدوات</p><div id="toolCount" class="value">—</div><p id="toolDetail" class="foot">أدوات القراءة المتوفرة</p></section>
+    </div>
+    <div class="cols">
+      <div>
+        <section class="card">
+          <div class="card-title"><h3>التشخيص الشامل</h3><span id="lastChecked" class="small">لم يبدأ بعد</span></div>
+          <div class="buttons"><button id="runAll" class="btn primary" type="button">▶ تشغيل الفحص الكامل</button><button id="checkHealth" class="btn" type="button">فحص الصحة فقط</button></div>
+          <ul id="steps" class="steps">
+            <li data-step="health"><span>1</span><strong>صحة الخادم والمصادقة</strong><em>بانتظار الفحص</em></li>
+            <li data-step="pinterest"><span>2</span><strong>الاتصال بموقع Pinterest</strong><em>بانتظار الفحص</em></li>
+            <li data-step="initialize"><span>3</span><strong>مصافحة MCP</strong><em>بانتظار الفحص</em></li>
+            <li data-step="tools"><span>4</span><strong>اكتشاف الأدوات</strong><em>بانتظار الفحص</em></li>
+          </ul>
+        </section>
+        <section class="card">
+          <div class="card-title"><h3>اختبار طلب بحث حقيقي</h3><span class="small">حد أقصى 3 صور في الاختبار</span></div>
+          <form id="searchForm" class="search-form"><input id="searchQuery" required maxlength="100" value="DJ mixer UI design" aria-label="كلمات البحث" placeholder="DJ mixer UI design"><button id="searchButton" class="btn primary" type="submit">بحث واختبار</button></form>
+          <p id="searchNote" class="result-note">الاختبار يتصل بـ Pinterest مباشرة ويعرض صور النتائج العامة.</p>
+          <div id="searchResults" class="search-results" aria-live="polite"></div>
+        </section>
+      </div>
+      <div>
+        <section class="card"><div class="card-title"><h3>الأدوات المتاحة</h3><span id="authMode" class="small">وضع المصادقة: —</span></div><div id="tools" class="tool-list"><span class="small">شغّل الفحص لتحميل قائمة الأدوات</span></div></section>
+        <section class="card"><div class="card-title"><h3>تفاصيل آخر استجابة</h3><button id="copyReport" type="button" class="btn quiet">نسخ تقرير الجلسة</button></div><pre id="details">ما فيه طلبات للحين.</pre></section>
+      </div>
+    </div>
+    <section class="card">
+      <div class="card-title"><h3>سجل طلبات صفحة التشخيص</h3><button id="clearLog" type="button" class="btn quiet">مسح السجل</button></div>
+      <div class="logs"><table><thead><tr><th>الوقت</th><th>الطريقة</th><th>المسار</th><th>HTTP</th><th>المدة</th><th>Request ID</th></tr></thead><tbody id="requestRows"><tr><td colspan="6" class="empty">شغّل فحص عشان تظهر الطلبات هني</td></tr></tbody></table></div>
+      <p class="hint">هذا السجل يعرض الطلبات اللي تسويها من <strong>هالصفحة خلال جلستك الحالية فقط</strong>، مو كل طلبات الزوّار. سجلات الإنتاج الكاملة موجودة في Vercel Runtime Logs. رمز 202 لإشعار MCP طبيعي، وGET على /mcp يرجّع 405 لأن الخادم يستخدم POST في الوضع الحالي.</p>
+    </section>
+    <div class="footer"><span>Read-only diagnostics · No credentials stored · لا نحفظ طلباتك في المتصفح بعد إغلاق الصفحة</span><span id="deployment">MCP Endpoint: <a href="/health">/mcp</a></span></div>
+  </main>
+  <script>
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const history = [];
+    let nextId = 1;
+    let running = false;
+    const safeText = (value) => value === undefined || value === null ? '—' : String(value);
+    const formatTime = (date) => new Intl.DateTimeFormat('ar-BH', { timeZone:'Asia/Bahrain', hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false }).format(date);
+    const setMetric = (id, value, kind, detailId, detail) => {
+      $(id).textContent = value;
+      $(id).className = 'value ' + (kind === 'ok' ? 'good-text' : kind === 'error' ? 'bad-text' : 'warn-text');
+      if (detailId) $(detailId).textContent = detail;
+    };
+    const setStep = (name, state, info) => { const el=document.querySelector('[data-step="'+name+'"]');el.classList.remove('ok','error');if(state==='ok')el.classList.add('ok');if(state==='error')el.classList.add('error');el.querySelector('span').textContent=state==='ok'?'✓':state==='error'?'!':'…';el.querySelector('em').textContent=info; };
+    const setOverall = (text, kind) => {const el=$('overall');el.className='pill '+(kind==='ok'?'good':kind==='error'?'bad':'');el.querySelector('span').textContent=text;};
+    const setDetails = (data) => { $('details').textContent=typeof data==='string'?data:JSON.stringify(data,null,2); };
+    const record = (item) => {history.unshift(item);if(history.length>40)history.length=40;renderHistory();};
+    function renderHistory(){
+      const tbody=$('requestRows');tbody.replaceChildren();
+      if(!history.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=6;td.className='empty';td.textContent='ما فيه طلبات للحين';tr.append(td);tbody.append(tr);return;}
+      for(const row of history){
+        const tr=document.createElement('tr');
+        for(const val of [formatTime(row.time),row.method,row.path,row.status,row.ms+' ms',row.id || '—']){
+          const td=document.createElement('td');
+          if(val===row.status){const tag=document.createElement('span');tag.className='status '+(row.status>=400||row.status===0?'fail':row.status===202?'pending':'');tag.textContent=String(val);td.append(tag);}
+          else if(val===row.id&&row.id){const c=document.createElement('code');c.textContent=val;td.append(c);}
+          else td.textContent=String(val);
+          tr.append(td);
+        }
+        tr.addEventListener('click',()=>setDetails({time:row.time.toISOString(),method:row.method,path:row.path,http_status:row.status,duration_ms:row.ms,request_id:row.id,message:row.error||null}));
+        tr.style.cursor='pointer';tbody.append(tr);
+      }
+    }
+    function parseMcp(text, contentType){
+      if(!text.trim())return null;
+      if(!contentType.includes('text/event-stream'))return JSON.parse(text);
+      const events=text.split(/\r?\n\r?\n/).flatMap(chunk=>{const lines=chunk.split(/\r?\n/).filter(line=>line.startsWith('data:'));if(!lines.length)return [];try{return [JSON.parse(lines.map(line=>line.slice(5).trim()).join('\n'))];}catch{return [];}});
+      if(!events.length)throw new Error('استجابة SSE ما تحتوي على JSON صالح');
+      return events[events.length-1];
+    }
+    async function request(path,method='GET',body=null,timeout=45000){
+      const start=performance.now();const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),timeout);let status=0,requestId='',payload,failed='';
+      try{
+        const options={method,signal:ctrl.signal,headers:{Accept:'application/json, text/event-stream'}};
+        if(body!==null){options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
+        const response=await fetch(path,options);
+        status=response.status;requestId=response.headers.get('X-Request-Id')||'';
+        const raw=await response.text();
+        try{payload=parseMcp(raw,response.headers.get('Content-Type')||'');}
+        catch{throw new Error('تعذّر قراءة استجابة '+path+' ('+status+'): '+raw.slice(0,160));}
+        if(!response.ok){const message=payload?.error?.message||payload?.error||raw.slice(0,160);throw new Error(typeof message==='string'?message:JSON.stringify(message));}
+        return payload;
+      }catch(error){failed=error.name==='AbortError'?'انتهت مهلة الطلب':error.message;throw new Error(failed);}
+      finally{clearTimeout(timer);record({time:new Date(),method,path,status,ms:Math.round(performance.now()-start),id:requestId,error:failed});}
+    }
+    async function mcp(method,params){const id=nextId++;const res=await request('/mcp','POST',{jsonrpc:'2.0',id,method,params},60000);if(res?.error)throw new Error(res.error.message||'MCP returned an error');return res?.result;}
+    async function checkHealth(upstream=false){
+      setStep('health','pending','جاري الفحص');
+      const result=await request('/health');
+      if(result?.status!=='ready')throw new Error('الخادم مو جاهز: '+safeText(result?.status));
+      setMetric('serverStatus','ONLINE','ok','serverDetail','HTTP 200 · /health');
+      $('authMode').textContent='المصادقة: '+safeText(result.checks?.mcp_auth);
+      setStep('health','ok','الخادم جاهز');
+      if(upstream){
+        setStep('pinterest','pending','جاري الاتصال');
+        const connected=await request('/health?check=pinterest','GET',null,12000);
+        if(connected?.checks?.pinterest?.status!=='reachable')throw new Error('فشل اتصال Pinterest');
+        setMetric('pinterestStatus','CONNECTED','ok','pinterestDetail','Pinterest HTTP '+connected.checks.pinterest.http_status);
+        setStep('pinterest','ok','الاتصال ناجح');
+      }
+    }
+    async function runDiagnostics(full){
+      if(running)return;running=true;$('runAll').disabled=true;$('checkHealth').disabled=true;setOverall('التشخيص قيد التنفيذ','pending');
+      for(const step of ['health','pinterest','initialize','tools'])setStep(step,'pending','بانتظار الفحص');
+      try{
+        await checkHealth(full);
+        if(full){
+          setStep('initialize','pending','جاري المصافحة');
+          const init=await mcp('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'pinterest-web-diagnostics',version:'1.0.0'}});
+          setMetric('mcpStatus','READY','ok','mcpDetail',safeText(init?.protocolVersion));
+          setStep('initialize','ok','تمت المصافحة');
+          await request('/mcp','POST',{jsonrpc:'2.0',method:'notifications/initialized'});
+          setStep('tools','pending','جاري قراءة الأدوات');
+          const res=await mcp('tools/list',{});
+          const tools=Array.isArray(res?.tools)?res.tools:[];
+          setMetric('toolCount',String(tools.length),'ok','toolDetail','أدوات متوفرة عبر MCP');
+          const el=$('tools');el.replaceChildren();
+          for(const item of tools){const div=document.createElement('div');div.className='tool';div.textContent=item.name;el.append(div);}
+          setStep('tools','ok',tools.length+' أدوات');
+          setDetails({server:'ready',pinterest:'reachable',protocol:init?.protocolVersion,tools:tools.map(x=>x.name)});
+        } else {setStep('pinterest','pending','لم يُطلب');setStep('initialize','pending','لم يُطلب');setStep('tools','pending','لم يُطلب');}
+        setOverall(full?'كل الفحوصات نجحت':'الخادم شغّال','ok');
+      }catch(error){setOverall('في خطأ يحتاج مراجعة','error');setDetails({error:error.message});const first=document.querySelector('.steps li:not(.ok)');if(first)setStep(first.dataset.step,'error',error.message.slice(0,70));if($('serverStatus').textContent==='—')setMetric('serverStatus','ERROR','error','serverDetail','تعذّر إكمال الفحص');}
+      finally{$('lastChecked').textContent='آخر فحص: '+formatTime(new Date());running=false;$('runAll').disabled=false;$('checkHealth').disabled=false;}
+    }
+    $('runAll').addEventListener('click',()=>runDiagnostics(true));
+    $('checkHealth').addEventListener('click',()=>runDiagnostics(false));
+    $('searchForm').addEventListener('submit',async(event)=>{
+      event.preventDefault();const btn=$('searchButton');if(btn.disabled)return;const query=$('searchQuery').value.trim();if(!query)return;
+      btn.disabled=true;$('searchNote').textContent='جاري إرسال طلب بحث إلى Pinterest...';$('searchResults').replaceChildren();
+      try{
+        const data=await mcp('tools/call',{name:'pinterest_search',arguments:{query,limit:3,previews:0}});
+        if(data?.isError)throw new Error(data.content?.[0]?.text||'Pinterest search failed');
+        const result=JSON.parse(data.content?.find(x=>x.type==='text')?.text||'{}');
+        $('searchNote').textContent='نجح البحث · '+safeText(result.count)+' نتائج · '+(result.next_bookmark?'صفحات إضافية متاحة':'لا توجد صفحات إضافية');
+        for(const pin of result.pins||[]){
+          const card=document.createElement('div');card.className='thumb';const img=document.createElement('img');
+          // Search results are shown only as images, with source URLs restricted to Pinterest's image CDN.
+          try{const url=new URL(pin.image_url);if(url.protocol==='https:'&&url.hostname==='i.pinimg.com'){img.src=url.href;img.alt=pin.title||'Pinterest pin';img.loading='lazy';card.append(img);}}catch{}
+          const title=document.createElement('p');title.textContent=pin.title||pin.description||'Pinterest image';card.append(title);$('searchResults').append(card);
+        }
+        setDetails({query,count:result.count,next_bookmark:!!result.next_bookmark,first_result:result.pins?.[0]||null});
+      }catch(error){$('searchNote').textContent='فشل الاختبار: '+error.message;setDetails({search_error:error.message});}
+      finally{btn.disabled=false;}
+    });
+    $('clearLog').addEventListener('click',()=>{history.length=0;renderHistory();setDetails('تم مسح سجل هالجلسة.');});
+    $('copyReport').addEventListener('click',async()=>{
+      const report={generated_at:new Date().toISOString(),endpoint:location.origin+'/mcp',visible_session_only:true,requests:history.map(x=>({time:x.time.toISOString(),method:x.method,path:x.path,status:x.status,duration_ms:x.ms,request_id:x.id,error:x.error}))};
+      try{await navigator.clipboard.writeText(JSON.stringify(report,null,2));$('copyReport').textContent='تم النسخ ✓';setTimeout(()=>$('copyReport').textContent='نسخ تقرير الجلسة',1800);}catch{setDetails(report);}
+    });
+    runDiagnostics(true);
+  </script>
+</body>
+</html>

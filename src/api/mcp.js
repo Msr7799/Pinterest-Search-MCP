@@ -37,6 +37,13 @@ export default async function handler(req, res) {
     }
   }
 
+  // This is a stateless Streamable HTTP endpoint. A GET with an SSE Accept
+  // header would otherwise hold a Vercel Function open until its timeout.
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return sendJson(res, 405, { error: 'Use POST for MCP requests; use GET /health for readiness.' });
+  }
+
   const server = createMcpServer({ enableDownloads: false });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   try {

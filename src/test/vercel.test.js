@@ -77,6 +77,9 @@ test('public read-only mode supports unauthenticated ChatGPT MCP requests', asyn
     assert.equal(health.status, 200);
     assert.equal((await health.json()).checks.mcp_auth, 'public_readonly');
     assert.ok(health.headers.get('x-request-id'));
+    const wrongMethod = await fetch(endpoint, { headers: { Accept: 'text/event-stream' } });
+    assert.equal(wrongMethod.status, 405);
+    assert.equal(wrongMethod.headers.get('allow'), 'POST');
 
     await client.connect(new StreamableHTTPClientTransport(new URL(endpoint)));
     const listed = await client.listTools();
