@@ -8,7 +8,9 @@ import handler from '../api/mcp.js';
 
 test('Vercel MCP endpoint requires a configured bearer token and omits downloads', async () => {
   const previousToken = process.env.MCP_AUTH_TOKEN;
+  const previousPublicMode = process.env.MCP_PUBLIC_READONLY;
   const token = 'test-secret-token';
+  delete process.env.MCP_PUBLIC_READONLY;
   delete process.env.MCP_AUTH_TOKEN;
 
   const httpServer = http.createServer((req, res) => {
@@ -25,7 +27,7 @@ test('Vercel MCP endpoint requires a configured bearer token and omits downloads
 
   try {
     const unconfigured = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    assert.equal(unconfigured.status, 500);
+    assert.equal(unconfigured.status, 503);
     const healthUnconfigured = await fetch(new URL('/api/health', endpoint));
     assert.equal(healthUnconfigured.status, 503);
 
@@ -54,5 +56,40 @@ test('Vercel MCP endpoint requires a configured bearer token and omits downloads
     await new Promise((resolve, reject) => httpServer.close((error) => (error ? reject(error) : resolve())));
     if (previousToken === undefined) delete process.env.MCP_AUTH_TOKEN;
     else process.env.MCP_AUTH_TOKEN = previousToken;
+    if (previousPublicMode === undefined) delete process.env.MCP_PUBLIC_READONLY;
+    else process.env.MCP_PUBLIC_READONLY = previousPublicMode;
+  }
+});
+
+test('public read-only mode supports unauthenticated ChatGPT MCP requests', async () => {
+  const previousToken = process.env.MCP_AUTH_TOKEN;
+  const previousPublicMode = process.env.MCP_PUBLIC_READONLY;
+  process.env.MCP_AUTH_TOKEN = 'preserved-private-token';
+  process.env.MCP_PUBLIC_READONLY = 'true';
+  const httpServer = http.createServer((req, res) => {
+    void (req.url.startsWith('/api/health') ? healthHandler(req, res) : handler(req, res));
+  });
+  await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${httpServer.address().port}/api/mcp`;
+  const client = new Client({ name: 'chatgpt-public-test', version: '1.0.0' });
+  try {
+    const health = await fetch(new URL('/api/health', endpoint));
+    assert.equal(health.status, 200);
+    assert.equal((await health.json()).checks.mcp_auth, 'public_readonly');
+    assert.ok(health.headers.get('x-request-id'));
+
+    await client.connect(new StreamableHTTPClientTransport(new URL(endpoint)));
+    const listed = await client.listTools();
+    assert.ok(listed.tools.some((tool) => tool.name === 'pinterest_search'));
+    assert.ok(!listed.tools.some((tool) => tool.name === 'pinterest_download'));
+    const response = await client.callTool({ name: 'pinterest_diagnostics', arguments: {} });
+    assert.equal(JSON.parse(response.content[0].text).status, 'ready');
+  } finally {
+    await client.close();
+    await new Promise((resolve, reject) => httpServer.close((err) => err ? reject(err) : resolve()));
+    if (previousToken === undefined) delete process.env.MCP_AUTH_TOKEN;
+    else process.env.MCP_AUTH_TOKEN = previousToken;
+    if (previousPublicMode === undefined) delete process.env.MCP_PUBLIC_READONLY;
+    else process.env.MCP_PUBLIC_READONLY = previousPublicMode;
   }
 });

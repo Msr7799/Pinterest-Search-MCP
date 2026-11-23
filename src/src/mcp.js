@@ -121,13 +121,20 @@ const pinRef = z
   {
     title: 'Related Pinterest pins',
     description:
-      'Find pins visually and topically similar to a given pin ("More like this"). Needs a real pin link or numeric id.',
+      'Find pins visually and topically similar to a given pin ("More like this"). Needs a real pin link or numeric id. ' +
+      'If Pinterest requires login for related results, returns keyword matches with source=keyword_fallback and a warning.',
     inputSchema: { pin: pinRef, limit: limit(20, 100), bookmark, media, previews },
     annotations: READ_ONLY,
   },
   async ({ pin, limit, bookmark, media, previews }) => {
     const res = await relatedPins(pin, { limit, bookmark, media });
-    const content = [json({ count: res.pins.length, next_bookmark: res.next_bookmark, pins: res.pins })];
+    const content = [json({
+      count: res.pins.length,
+      next_bookmark: res.next_bookmark,
+      source: res.source || 'pinterest_related',
+      ...(res.warning ? { warning: res.warning } : {}),
+      pins: res.pins,
+    })];
     if (previews) content.push(...(await withPreviews(res.pins, previews)));
     return { content };
   }

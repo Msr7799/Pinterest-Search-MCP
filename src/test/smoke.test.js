@@ -71,6 +71,8 @@ test('pin details and related pins', async () => {
   assert.ok(pin.title && pin.image_url);
   const { data: rel } = await call('pinterest_related_pins', { pin: '1128714725389331478', limit: 15 });
   assert.ok(rel.pins.length >= 10);
+  assert.ok(['pinterest_related', 'keyword_fallback'].includes(rel.source));
+  if (rel.source === 'keyword_fallback') assert.match(rel.warning, /keyword-search results/i);
 });
 
 test('anonymous search ids get a clear error', async () => {
