@@ -304,20 +304,36 @@ export async function getPin(input) {
 
 export async function relatedPins(input, { limit = 20, bookmark, media = 'any' } = {}) {
   const id = await resolvePinId(input);
-  return paged(async (bm) => {
-    const options = {
-      pin_id: id,
-      context_pin_ids: [],
-      search_query: '',
-      source: 'deep_linking',
-      top_level_source: 'deep_linking',
-      top_level_source_depth: 1,
-      is_pdp: false,
+  try {
+    return await paged(async (bm) => {
+      const options = {
+        pin_id: id,
+        context_pin_ids: [],
+        search_query: '',
+        source: 'deep_linking',
+        top_level_source: 'deep_linking',
+        top_level_source_depth: 1,
+        is_pdp: false,
+      };
+      if (bm) options.bookmarks = [bm];
+      const { data, bookmark: next } = await resource('RelatedModulesResource', options, `/pin/${id}/`, 'www/pin/[id].js');
+      return { items: data, bookmark: next };
+    }, limit, bookmark, 0, media);
+  } catch (error) {
+    if (!/login required/i.test(error.message)) throw error;
+    // Pinterest can require login for RelatedModulesResource despite allowing
+    // public pin details and keyword searches. Do not mislabel fallback results
+    // as algorithmically related; tell the MCP client what changed.
+    const pin = await getPin(id);
+    const query = (pin.title || pin.description || pin.alt_text || '').split(/\s+/).slice(0, 12).join(' ').trim();
+    if (!query) throw error;
+    const result = await searchPins(query, { limit, bookmark, media });
+    return {
+      ...result,
+      source: 'keyword_fallback',
+      warning: 'Pinterest requested login for visually related pins. These are keyword-search results, not confirmed visual matches.',
     };
-    if (bm) options.bookmarks = [bm];
-    const { data, bookmark: next } = await resource('RelatedModulesResource', options, `/pin/${id}/`, 'www/pin/[id].js');
-    return { items: data, bookmark: next };
-  }, limit, bookmark, 0, media);
+  }
 }
 
 function parseBoard(input) {
