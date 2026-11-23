@@ -138,6 +138,18 @@ Example with Claude Code:
 claude mcp add pinterest --scope user -e MCP_PINTEREST_PROXY=http://127.0.0.1:7890 -- npx -y @sunkimkk/pinterest-mcp
 ```
 
+## Deploy as a remote MCP server on Vercel
+
+The npm/stdio server is for local MCP clients. For a remotely hosted endpoint, deploy the HTTP function in `src/api/mcp.js`:
+
+1. Import this repository into Vercel and set **Root Directory** to `src`.
+2. Set **Node.js Version** to `20.x` or newer.
+3. Add the environment variable `MCP_AUTH_TOKEN` with a long random secret. Generate one with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. The endpoint rejects requests unless they include this bearer token.
+4. Deploy. The MCP endpoint will be `https://<your-project>.vercel.app/api/mcp`.
+5. In your MCP client's remote-server settings, select Streamable HTTP, enter that URL, and set the header `Authorization: Bearer <your-token>`.
+
+The hosted endpoint is stateless and does not expose `pinterest_download`: Vercel's function filesystem is temporary, so downloaded files would not be available to your client. Search, pin details, boards, related pins, and image previews remain available. Vercel function execution limits may also affect long Pinterest requests.
+
 ## FAQ
 
 **Why can't I get details for a search result?**
