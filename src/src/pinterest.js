@@ -28,14 +28,14 @@ export const DOWNLOAD_ROOT =
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function request(url, init = {}, retries = 2) {
+async function request(url, init = {}, retries = 2, timeoutMs = TIMEOUT_MS) {
   for (let attempt = 0; ; attempt++) {
     let res;
     try {
       res = await fetch(url, {
         ...init,
         dispatcher,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
         headers: { 'User-Agent': UA, 'Accept-Language': LOCALE, ...init.headers },
       });
     } catch (err) {
@@ -52,6 +52,13 @@ async function request(url, init = {}, retries = 2) {
     }
     return res;
   }
+}
+
+export async function checkPinterestConnectivity() {
+  const res = await request(BASE, { headers: { Accept: 'text/html' } }, 0, Math.min(TIMEOUT_MS, 5000));
+  await res.body?.cancel();
+  if (!res.ok) throw new Error(`Pinterest returned HTTP ${res.status}`);
+  return { http_status: res.status };
 }
 
 // Pinterest ties pagination bookmarks to the anonymous session cookie, so keep one jar

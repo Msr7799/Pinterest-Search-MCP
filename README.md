@@ -148,6 +148,8 @@ The npm/stdio server is for local MCP clients. For a remotely hosted endpoint, d
 4. Deploy. The MCP endpoint will be `https://<your-project>.vercel.app/api/mcp`.
 5. In your MCP client's remote-server settings, select Streamable HTTP, enter that URL, and set the header `Authorization: Bearer <your-token>`.
 
+Check deployment readiness at `https://<your-project>.vercel.app/api/health`. Add `?check=pinterest` and the bearer header to run a one-time upstream connectivity test. The MCP server also provides `pinterest_diagnostics`; call it with `check_pinterest: true` to run the same test on demand.
+
 The hosted endpoint is stateless and does not expose `pinterest_download`: Vercel's function filesystem is temporary, so downloaded files would not be available to your client. Search, pin details, boards, related pins, and image previews remain available. Vercel function execution limits may also affect long Pinterest requests.
 
 ## FAQ

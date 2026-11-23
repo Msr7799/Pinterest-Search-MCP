@@ -1,15 +1,6 @@
-import { timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isAuthorized } from '../src/auth.js';
 import { createMcpServer } from '../src/mcp.js';
-
-function isAuthorized(req, token) {
-  const authorization = req.headers.authorization || '';
-  if (!authorization.startsWith('Bearer ')) return false;
-
-  const supplied = Buffer.from(authorization.slice(7));
-  const expected = Buffer.from(token);
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
-}
 
 function sendJson(res, status, body) {
   res.statusCode = status;

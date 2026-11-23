@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   DOWNLOAD_ROOT,
   boardPins,
+  checkPinterestConnectivity,
   downloadImages,
   fetchPreview,
   getPin,
@@ -182,6 +183,35 @@ const pinRef = z
     }
     return { content };
   }
+  );
+
+  tool(
+    server,
+    'pinterest_diagnostics',
+    {
+      title: 'Diagnose Pinterest MCP',
+      description:
+        'Check that the MCP server is ready. Set check_pinterest to true to make a one-time live connectivity check to Pinterest.',
+      inputSchema: {
+        check_pinterest: z
+          .boolean()
+          .default(false)
+          .describe('Make a live request to Pinterest instead of checking only server readiness'),
+      },
+      annotations: READ_ONLY,
+    },
+    async ({ check_pinterest }) => {
+      const diagnostics = { status: 'ready', checks: { server: 'ready', pinterest: 'not_checked' } };
+      if (check_pinterest) {
+        try {
+          diagnostics.checks.pinterest = { status: 'reachable', ...(await checkPinterestConnectivity()) };
+        } catch (error) {
+          diagnostics.status = 'degraded';
+          diagnostics.checks.pinterest = { status: 'unavailable', error: error.message };
+        }
+      }
+      return { content: [json(diagnostics)], isError: diagnostics.status !== 'ready' };
+    }
   );
 
   if (enableDownloads) tool(

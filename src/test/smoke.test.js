@@ -31,10 +31,11 @@ after(async () => {
   await fs.rm(tmp, { recursive: true, force: true });
 });
 
-test('lists six tools', async () => {
+test('lists seven tools', async () => {
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((t) => t.name).sort(), [
     'pinterest_board_pins',
+    'pinterest_diagnostics',
     'pinterest_download',
     'pinterest_get_pin',
     'pinterest_preview_images',
